@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { JavaCodeParser } from '../../shared/parser';
+import { JavaCodeParser } from '../../shared/parser/index';
 import { ApifoxConverter } from '../../shared/converter/apifox-converter';
 import { ParseOptions, ParseResponse } from '../../shared/types';
 

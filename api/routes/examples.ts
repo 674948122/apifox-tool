@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { getAllExamples, getExampleById } from '../../shared/examples';
+import { getAllExamples, getExampleById } from '../../shared/examples/index';
 import { Example } from '../../shared/types';
 
 /**

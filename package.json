@@ -2,7 +2,6 @@
   "name": "apifox-tool",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "scripts": {
     "client:dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
@@ -10,7 +9,14 @@
     "preview": "vite preview",
     "check": "tsc --noEmit",
     "server:dev": "nodemon",
-    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\""
+    "dev": "concurrently \"npm run client:dev\" \"npm run server:dev\"",
+    "docker:build": "docker build -t apifox-tool .",
+    "docker:run": "docker run -p 3000:3000 --name apifox-tool-container apifox-tool",
+    "docker:stop": "docker stop apifox-tool-container && docker rm apifox-tool-container",
+    "docker:compose:up": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:logs": "docker-compose logs -f",
+    "docker:clean": "docker system prune -f && docker image prune -f"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.6.0",

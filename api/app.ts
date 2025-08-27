@@ -6,14 +6,11 @@ import express, { type Request, type Response, type NextFunction }  from 'expres
 import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import authRoutes from './routes/auth.js';
+import authRoutes from './routes/auth';
 import { parseJavaCode, validateJavaCode } from './routes/parse';
 import { getExamples, getExampleById_API, createExample, getExampleStats } from './routes/examples';
 
-// for esm mode
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// __dirname is available in CommonJS mode
 
 // load env
 dotenv.config();
@@ -27,6 +24,11 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+/**
+ * Static files - 提供前端构建的静态文件
+ */
+app.use(express.static(path.join(__dirname, '../frontend-dist')));
 
 /**
  * API Routes
@@ -60,9 +62,33 @@ app.use('/api/health', (req: Request, res: Response, next: NextFunction): void =
 });
 
 /**
- * 404 handler
+ * SPA fallback - 对于非API和非静态资源路径返回index.html
  */
-app.use((req: Request, res: Response) => {
+app.get('*', (req: Request, res: Response) => {
+  // 如果是API路径，返回404
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({
+      success: false,
+      error: `Route ${req.method} ${req.originalUrl} not found`
+    });
+  }
+  
+  // 如果是静态资源路径（assets、favicon等），返回404让Express处理
+  if (req.path.startsWith('/assets/') || req.path.includes('.')) {
+    return res.status(404).json({
+      success: false,
+      error: `Static resource ${req.originalUrl} not found`
+    });
+  }
+  
+  // 否则返回前端应用的index.html
+  res.sendFile(path.join(__dirname, '../frontend-dist/index.html'));
+});
+
+/**
+ * 404 handler for API routes
+ */
+app.use('/api/*', (req: Request, res: Response) => {
   res.status(404).json({
     success: false,
     error: `Route ${req.method} ${req.originalUrl} not found`
