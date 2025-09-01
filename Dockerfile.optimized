@@ -1,0 +1,68 @@
+# 优化的多阶段构建 Dockerfile
+# 使用本地构建的前端文件，避免Docker中的复杂构建问题
+
+# 阶段1: 后端构建
+FROM node:18-alpine AS backend-builder
+
+WORKDIR /app
+
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 安装所有依赖（包括devDependencies用于构建）
+RUN npm ci --silent && npm cache clean --force
+
+# 复制后端源代码
+COPY api ./api
+COPY shared ./shared
+COPY tsconfig.backend.json ./
+
+# 构建后端
+RUN npx tsc -p tsconfig.backend.json
+
+# 阶段2: 生产环境
+FROM node:18-alpine AS production
+
+WORKDIR /app
+
+# 安装 dumb-init 用于信号处理
+RUN apk add --no-cache dumb-init
+
+# 创建非 root 用户
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nextjs -u 1001 -G nodejs
+
+# 复制 package.json 和 package-lock.json
+COPY package*.json ./
+
+# 只安装生产依赖
+RUN npm ci --omit=dev --silent && npm cache clean --force
+
+# 从构建阶段复制编译后的后端代码
+COPY --from=backend-builder /app/dist/api ./api
+COPY --from=backend-builder /app/dist/shared ./shared
+
+# 复制本地构建的前端文件（需要先在本地运行 npm run build）
+COPY dist ./frontend-dist
+
+# 复制必要的配置文件
+COPY vercel.json ./
+
+# 更改文件所有者
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# 暴露端口
+EXPOSE 3000
+
+# 设置环境变量
+ENV NODE_ENV=production
+ENV PORT=3000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+
+# 启动应用
+ENTRYPOINT ["dumb-init", "--"]
+CMD ["node", "api/server.js"]
